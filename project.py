@@ -6,48 +6,48 @@ from PIL import Image, ImageDraw, ImageFont
 try:
     model = tf.keras.models.load_model(r"C:\Users\kotes\Downloads\vegetable_classification_model.h5")
     print("Model loaded successfully!")
-    print("Model input shape:", model.input_shape)  # Should be (None, 224, 224, 3)
-    print("Model output shape:", model.output_shape)  # Should be (None, 7)
+    print("Model input shape:", model.input_shape)
+    print("Model output shape:", model.output_shape)
 except Exception as e:
     print(f"Error loading model: {e}")
     exit()
 
-# Function to predict the vegetable class from an image
 def predict_image(img_path, model, class_names):
     try:
-        # Load the image and check its mode
+        # Load and convert image
         img = Image.open(img_path)
         print("Image mode:", img.mode)
-        img = img.convert('RGB')  # Ensure RGB format (3 channels)
+        img = img.convert('RGB')
 
-        # Resize to match model's expected input size
-        target_size = (224, 224)  # Updated to match model.input_shape
+        # Resize and normalize
+        target_size = (224, 224)
         img_resized = img.resize(target_size)
-
-        # Convert to array and normalize
         img_array = np.array(img_resized) / 255.0
-        img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
-        print("Input shape to model:", img_array.shape)  # Should be (1, 224, 224, 3)
+        img_array = np.expand_dims(img_array, axis=0)
+        print("Input shape to model:", img_array.shape)
 
-        # Verify input compatibility with model
-        expected_shape = model.input_shape[1:]  # (224, 224, 3)
+        # Check shape compatibility
+        expected_shape = model.input_shape[1:]
         if img_array.shape[1:] != expected_shape:
             raise ValueError(f"Input shape {img_array.shape[1:]} does not match model expected shape {expected_shape}")
 
-        # Make a prediction
+        # Predict
         prediction = model.predict(img_array)
         predicted_class_idx = np.argmax(prediction)
         predicted_label = class_names[predicted_class_idx]
-        confidence = prediction[0][predicted_class_idx]  # Confidence score
+        confidence = prediction[0][predicted_class_idx]
 
-        # Draw the label on the image
+        # Draw result
         draw = ImageDraw.Draw(img)
         try:
             font = ImageFont.truetype("arial.ttf", 20)
         except:
             font = ImageFont.load_default()
 
-        draw.text((10, 10), f"Predicted: {predicted_label} ({confidence:.2f})", fill="red", font=font)
+        text = f"Predicted: {predicted_label} ({confidence:.2f})"
+        text_bbox = draw.textbbox((10, 10), text, font=font)
+        draw.rectangle(text_bbox, fill="white")
+        draw.text((10, 10), text, fill="red", font=font)
 
         return img, predicted_label
 
@@ -59,16 +59,15 @@ def predict_image(img_path, model, class_names):
 img_path = r"D:\common_vegetables\train\potatoes\20200816_193425.jpg"
 class_names = ['butter', 'eggs', 'garlic', 'lemon', 'onines', 'potato', 'tomatoes']
 
-# Verify class names match model output
-print("Number of classes in class_names:", len(class_names))  # Should be 7
-print("Expected number of classes from model:", model.output_shape[-1])  # Should be 7
+# Sanity check
+print("Number of classes in class_names:", len(class_names))
+print("Expected number of classes from model:", model.output_shape[-1])
 if len(class_names) != model.output_shape[-1]:
     print("Warning: Number of class names does not match model output classes!")
 
-# Predict and visualize
+# Run prediction
 image_with_label, predicted_class = predict_image(img_path, model, class_names)
 
-# Display and save the image if successful
 if image_with_label is not None:
     image_with_label.show()
     image_with_label.save('output_predicted.jpg')
